@@ -1,6 +1,6 @@
 import { useSelector } from "react-redux";
 import React from "react";
-import { Navigate, useNavigate } from "react-router-dom";
+import { Navigate, useNavigate, useParams } from "react-router-dom";
 import TextField from "@mui/material/TextField";
 import Paper from "@mui/material/Paper";
 import Button from "@mui/material/Button";
@@ -12,6 +12,7 @@ import axios from "../../axios";
 import { selectIsAuth } from "../../redux/slices/auth";
 
 export const AddPost = () => {
+  const { id } = useParams();
   const navigate = useNavigate();
   const isAuth = useSelector(selectIsAuth);
   const [isLoading, setLoading] = React.useState(false);
@@ -20,6 +21,8 @@ export const AddPost = () => {
   const [tags, setTags] = React.useState("");
   const [imageUrl, setImageUrl] = React.useState("");
   const inputFileRef = React.useRef(null);
+
+  const isEditing = Boolean(id);
 
   const handleChangeFile = async (event) => {
     try {
@@ -48,16 +51,29 @@ export const AddPost = () => {
 
       const fields = { title, imageUrl, tags, text };
 
-      const { data } = await axios.post("/posts", fields);
+      const { data } = isEditing
+        ? axios.patch(`/posts/${id}`, fields)
+        : axios.post("/posts", fields);
 
-      const id = data._id;
+      const _id = isEditing ? id : data._id;
 
-      navigate(`/posts/${id}`);
+      navigate(`/posts/${_id}`);
     } catch (err) {
       console.warn(err);
       alert("Ошибка при создании статьи");
     }
   };
+
+  React.useEffect(() => {
+    if (id) {
+      axios.get(`/posts/${id}`).then(({ data }) => {
+        setTitle(data.title);
+        setText(data.text);
+        setImageUrl(data.imageUrl);
+        setTags(data.tags.join(","));
+      });
+    }
+  }, []);
 
   const options = React.useMemo(
     () => ({
@@ -135,7 +151,7 @@ export const AddPost = () => {
       />
       <div className={styles.buttons}>
         <Button onClick={onSubmit} size="large" variant="contained">
-          Опубликовать
+          {isEditing ? "Сохранить" : "Опубликовать"}
         </Button>
         <a href="/">
           <Button size="large">Отмена</Button>
